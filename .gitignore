@@ -1,0 +1,23 @@
+# Maven
+target/
+*.jar
+*.war
+
+# Logs
+logs/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+postgres_data/
+
+# Environment
+*.env

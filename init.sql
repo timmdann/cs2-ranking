@@ -1,0 +1,3 @@
+CREATE DATABASE cs2_players;
+CREATE DATABASE cs2_matches;
+CREATE DATABASE cs2_ranking;
