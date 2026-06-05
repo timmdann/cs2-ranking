@@ -44,7 +44,8 @@ public class MatchServiceImpl implements MatchService {
         MatchEntity entity = new MatchEntity(
                 request.getWinnerTeamPlayerIds(),
                 request.getLoserTeamPlayerIds(),
-                Instant.now(clock)
+                Instant.now(clock),
+                request.getMapName()
         );
         MatchEntity saved = matchRepository.save(entity);
 
@@ -53,7 +54,8 @@ public class MatchServiceImpl implements MatchService {
                 Instant.now(clock),
                 saved.getId(),
                 saved.getWinnerTeamPlayerIds(),
-                saved.getLoserTeamPlayerIds()
+                saved.getLoserTeamPlayerIds(),
+                saved.getMapName()
         );
 
         eventBus.publish(event);
@@ -86,7 +88,8 @@ public class MatchServiceImpl implements MatchService {
                 entity.getId(),
                 entity.getWinnerTeamPlayerIds(),
                 entity.getLoserTeamPlayerIds(),
-                entity.getPlayedAt()
+                entity.getPlayedAt(),
+                entity.getMapName()
         );
     }
 }

@@ -21,6 +21,7 @@
         <module>player-service</module>
         <module>match-service</module>
         <module>ranking-service</module>
+        <module>activity-service</module>
     </modules>
 
     <properties>

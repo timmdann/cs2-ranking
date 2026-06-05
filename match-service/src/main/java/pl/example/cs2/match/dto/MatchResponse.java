@@ -7,5 +7,6 @@ public record MatchResponse(
         Long id,
         List<Long> winnerTeamPlayerIds,
         List<Long> loserTeamPlayerIds,
-        Instant playedAt
+        Instant playedAt,
+        String mapName
 ) {}

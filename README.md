@@ -1,169 +1,121 @@
 # CS2 Ranking System
 
-System rankingowy i tabela liderów dla gry Counter-Strike 2.
+A microservices-based ranking system and leaderboard for Counter-Strike 2.
 
-## Architektura
+## Architecture
 
-Projekt składa się z 3 niezależnych serwisów Spring Boot oraz wspólnego modułu `common`:
+The project consists of 4 independent Spring Boot services and a shared `common` module:
 
 ```
 cs2-ranking/
-├── common/          # wspólne kontrakty i eventy
-├── player-service/  # zarządzanie graczami         :8081
-├── match-service/   # rejestracja meczów            :8082
-└── ranking-service/ # ELO i tabela liderów          :8083
+├── common/           # Shared contracts and events
+├── player-service/   # Player management & statistics   :8081
+├── match-service/    # Match registration               :8082
+├── ranking-service/  # Elo calculation & leaderboard    :8083
+└── activity-service/ # Real-time activity feed (WS)     :8084
 ```
 
-### Przepływ danych
+### Data Flow
 
-```
-POST /players  →  player-service  →  ranking-service (rejestracja gracza)
-POST /matches  →  match-service   →  ranking-service (aktualizacja ELO)
-GET /leaderboard  ←  ranking-service
-```
+1.  **Registration**: `POST /players` → `player-service` → `ranking-service`
+2.  **Match**: `POST /matches` → `match-service` → `ranking-service` (Elo) → `player-service` (Map Stats)
+3.  **Social**: `POST /players/{id}/teams` → `player-service` → `activity-service` (WebSocket Broadcast)
+4.  **Earnings**: `POST /players/{id}/earnings` → `player-service`
 
-## Wymagania
+## Requirements
 
-- Java 21
-- Maven (wbudowany w IntelliJ IDEA)
-- Docker Desktop
+-   Java 21
+-   Maven
+-   Docker Desktop
 
-## Uruchomienie
+## Getting Started
 
-### 1. Sklonuj repozytorium
-
-```bash
-git clone <repo-url>
-cd cs2-ranking
-```
-
-### 2. Zbuduj projekt
+### 1. Build the project
 
 ```bash
 ./manage.sh build
 ```
 
-### 3. Uruchom wszystkie serwisy
+### 2. Deploy all services
 
 ```bash
 ./manage.sh deploy
 ```
 
-Skrypt automatycznie:
-- uruchomi PostgreSQL w Dockerze
-- stworzy bazy danych `cs2_players`, `cs2_matches`, `cs2_ranking`
-- uruchomi wszystkie 3 serwisy Spring Boot
-- sprawdzi status każdego serwisu
+The script will automatically start PostgreSQL, create databases, run all 4 Spring Boot services, and verify their status.
 
-### 4. Zatrzymaj serwisy
+### 3. Stop services
 
 ```bash
 ./manage.sh stop
 ```
 
-### Pozostałe komendy
+## Testing Examples
 
-| Komenda | Opis |
-|--------|------|
-| `./manage.sh build` | kompiluje wszystkie moduły |
-| `./manage.sh deploy` | uruchamia PostgreSQL i wszystkie serwisy |
-| `./manage.sh stop` | zatrzymuje serwisy i Docker |
-| `./manage.sh clean` | usuwa build i wolumeny Docker |
-
-## API
-
-### Player Service — `http://localhost:8081`
-
-| Metoda | Endpoint | Opis |
-|--------|----------|------|
-| POST | `/players` | Utwórz gracza |
-| GET | `/players` | Lista graczy |
-| GET | `/players/{id}` | Pobierz gracza |
-
-**Przykład — utwórz gracza:**
+### 1. Create Players
 ```bash
-curl -X POST http://localhost:8081/players \
-  -H "Content-Type: application/json" \
-  -d '{"username": "s1mple"}'
+# Create Player 1
+curl -X POST http://localhost:8081/players -H "Content-Type: application/json" -d '{"username": "s1mple"}'
+
+# Create Player 2
+curl -X POST http://localhost:8081/players -H "Content-Type: application/json" -d '{"username": "zywoo"}'
 ```
 
-**Odpowiedź:**
-```json
-{
-  "id": 1,
-  "username": "s1mple",
-  "eloRating": 1000,
-  "matchesPlayed": 0,
-  "wins": 0,
-  "losses": 0,
-  "winRate": 0.0
-}
+### 2. Join a Team (Triggers Real-time Feed)
+```bash
+# s1mple joins NaVi
+curl -X POST "http://localhost:8081/players/1/teams?teamName=NaVi"
 ```
+*Check `activity-service` logs or WebSocket feed to see the broadcast.*
 
-### Match Service — `http://localhost:8082`
-
-| Metoda | Endpoint | Opis |
-|--------|----------|------|
-| POST | `/matches` | Zarejestruj mecz |
-| GET | `/matches` | Lista meczów |
-| GET | `/matches/{id}` | Pobierz mecz |
-
-**Przykład — zarejestruj mecz:**
+### 3. Record a Match (Updates Elo & Map Stats)
 ```bash
 curl -X POST http://localhost:8082/matches \
   -H "Content-Type: application/json" \
-  -d '{"winnerTeamPlayerIds": [1, 2, 3, 4, 5], "loserTeamPlayerIds": [6, 7, 8, 9, 10]}'
+  -d '{
+    "winnerTeamPlayerIds": [1],
+    "loserTeamPlayerIds": [2],
+    "mapName": "de_dust2"
+  }'
 ```
 
-### Ranking Service — `http://localhost:8083`
+### 4. Add Tournament Earnings
+```bash
+curl -X POST http://localhost:8081/players/1/earnings \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tournamentName": "PGL Major Copenhagen 2024",
+    "amount": 500000,
+    "currency": "USD"
+  }'
+```
 
-| Metoda | Endpoint | Opis |
-|--------|----------|------|
-| GET | `/leaderboard` | Tabela liderów posortowana po ELO |
+### 5. Check Player Profile
+```bash
+curl http://localhost:8081/players/1
+```
+*Observe `eloRating`, `teamHistory`, `mapStats` (with win rates), and `totalEarnings`.*
 
-**Przykład:**
+### 6. View Leaderboard
 ```bash
 curl http://localhost:8083/leaderboard
 ```
 
-**Odpowiedź:**
-```json
-[
-  {
-    "position": 1,
-    "playerId": 1,
-    "username": "s1mple",
-    "eloRating": 1016,
-    "matchesPlayed": 1,
-    "wins": 1,
-    "losses": 0,
-    "winRate": 100.0
-  }
-]
-```
+### 7. Real-time Activity Feed (WebSocket)
+Connect to: `ws://localhost:8084/ws-activity`
+Topic to subscribe: `/topic/feed`
 
-## System ELO
+## Elo System
 
-Ranking oparty na klasycznym algorytmie ELO z współczynnikiem K=32.
+Based on the classic Elo algorithm (K-factor = 32).
+-   Expected score formula: `E = 1 / (1 + 10^((Opponent - Player) / 400))`
+-   New rating: `R_new = R_old + K * (Actual - E)`
 
-Wzór na oczekiwany wynik:
-```
-E = 1 / (1 + 10^((przeciwnik - gracz) / 400))
-```
+## Technologies
 
-Nowy rating:
-```
-R_new = R_old + K * (wynik - E)
-```
-
-Gdzie `wynik = 1.0` dla zwycięzcy i `0.0` dla przegranego. Przy równych ratingach zwycięzca zyskuje +16, przegrany traci -16. Przy większej różnicy ratingów — mniejszy zysk za wygraną z słabszym przeciwnikiem.
-
-## Technologie
-
-- Java 21
-- Spring Boot 3.3
-- Spring Data JPA
-- PostgreSQL 16
-- Docker
-- Maven (multi-module)
-- JUnit 5 + Mockito
+-   Java 21 / Spring Boot 3.3
+-   Spring Data JPA / PostgreSQL 16
+-   WebSockets (STOMP / SockJS)
+-   Docker & Docker Compose
+-   Maven Multi-module
+-   JUnit 5 & Mockito
