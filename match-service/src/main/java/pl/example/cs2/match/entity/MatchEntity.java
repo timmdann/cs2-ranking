@@ -25,16 +25,21 @@ public class MatchEntity {
     @Column(nullable = false)
     private Instant playedAt;
 
+    @Column(nullable = false)
+    private String mapName;
+
     protected MatchEntity() {}
 
-    public MatchEntity(List<Long> winnerTeamPlayerIds, List<Long> loserTeamPlayerIds, Instant playedAt) {
+    public MatchEntity(List<Long> winnerTeamPlayerIds, List<Long> loserTeamPlayerIds, Instant playedAt, String mapName) {
         this.winnerTeamPlayerIds = winnerTeamPlayerIds;
         this.loserTeamPlayerIds = loserTeamPlayerIds;
         this.playedAt = playedAt;
+        this.mapName = mapName;
     }
 
     public Long getId() { return id; }
     public List<Long> getWinnerTeamPlayerIds() { return winnerTeamPlayerIds; }
     public List<Long> getLoserTeamPlayerIds() { return loserTeamPlayerIds; }
     public Instant getPlayedAt() { return playedAt; }
+    public String getMapName() { return mapName; }
 }

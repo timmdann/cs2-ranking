@@ -11,6 +11,7 @@ import pl.example.cs2.player.exception.PlayerAlreadyExistsException;
 import pl.example.cs2.player.repository.PlayerRepository;
 import pl.example.cs2.player.service.PlayerServiceImpl;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -25,7 +26,7 @@ class PlayerServiceTest {
     void setUp() {
         playerRepository = Mockito.mock(PlayerRepository.class);
         RestTemplate restTemplate = Mockito.mock(RestTemplate.class);
-        playerService = new PlayerServiceImpl(playerRepository, restTemplate, "http://localhost:8083");
+        playerService = new PlayerServiceImpl(playerRepository, restTemplate, "http://localhost:8083", "http://localhost:8084");
     }
 
     @Test
@@ -58,5 +59,48 @@ class PlayerServiceTest {
         PlayerResponse response = playerService.getPlayer(1L);
 
         assertEquals(0.0, response.winRate());
+    }
+
+    @Test
+    void joinTeamShouldAddTeamToHistory() {
+        PlayerEntity entity = new PlayerEntity("zywoo", 1000);
+        when(playerRepository.findById(1L)).thenReturn(Optional.of(entity));
+        when(playerRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        PlayerResponse response = playerService.joinTeam(1L, "Vitality");
+
+        assertEquals(1, response.teamHistory().size());
+        assertEquals("Vitality", response.teamHistory().get(0).teamName());
+        assertNotNull(response.teamHistory().get(0).joinedAt());
+        assertNull(response.teamHistory().get(0).leftAt());
+    }
+
+    @Test
+    void updateStatsShouldRecordMapStatistics() {
+        PlayerEntity entity = new PlayerEntity("ropz", 1000);
+        when(playerRepository.findById(1L)).thenReturn(Optional.of(entity));
+        when(playerRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        PlayerResponse response = playerService.updateStats(1L, true, 1025, "de_dust2");
+
+        assertEquals(1, response.mapStats().size());
+        assertEquals("de_dust2", response.mapStats().get(0).mapName());
+        assertEquals(1, response.mapStats().get(0).wins());
+        assertEquals(0, response.mapStats().get(0).losses());
+        assertEquals(100.0, response.mapStats().get(0).winRate());
+    }
+
+    @Test
+    void addTournamentEarningsShouldUpdateTotalAndHistory() {
+        PlayerEntity entity = new PlayerEntity("monesy", 1000);
+        when(playerRepository.findById(1L)).thenReturn(Optional.of(entity));
+        when(playerRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        PlayerResponse response = playerService.addTournamentEarnings(1L, "PGL Major", new BigDecimal("500000"), "USD");
+
+        assertEquals(1, response.tournamentEarnings().size());
+        assertEquals("PGL Major", response.tournamentEarnings().get(0).tournamentName());
+        assertEquals(new BigDecimal("500000"), response.tournamentEarnings().get(0).amount());
+        assertEquals(new BigDecimal("500000"), response.totalEarnings());
     }
 }

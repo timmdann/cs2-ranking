@@ -8,5 +8,6 @@ public record MatchFinishedEvent(
         Instant occurredAt,
         Long matchId,
         List<Long> winnerTeamPlayerIds,
-        List<Long> loserTeamPlayerIds
+        List<Long> loserTeamPlayerIds,
+        String mapName
 ) {}
